@@ -1,6 +1,8 @@
 const express = require('express');
 const app = express();
-const { User } = require('./db');
+const { Kitten } = require('./db');
+const jwt = require('jsonwebtoken');
+const {JWT_SECRET = 'neverTellthesecretheheh'} = process.env;
 
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
@@ -21,6 +23,17 @@ app.get('/', async (req, res, next) => {
 
 // Verifies token with jwt.verify and sets req.user
 // TODO - Create authentication middleware
+const setUser = async (req, res, next) => {
+  const auth = req.header("Authorization");
+  if (!auth) {
+    next();
+  } else {
+    const [, token] = auth.split(' ');
+    const user = jwt.verify(token, JWT_SECRET);
+    req.user = user;
+    next();
+  }
+};
 
 // POST /register
 // OPTIONAL - takes req.body of {username, password} and creates a new user with the hashed password
@@ -30,12 +43,49 @@ app.get('/', async (req, res, next) => {
 
 // GET /kittens/:id
 // TODO - takes an id and returns the cat with that id
+app.get('/kittens/:id', setUser, async (req, res, next) => {
+  // const auth = req.header("Authorization");
+  const kitten = req.user;
+  const foundUser = await Kitten.findByPk(kitten.id);
+  if (foundUser) {
+    res.send();
+  } else {
+    res.sendStatus(401);
+  }
+});
 
 // POST /kittens
 // TODO - takes req.body of {name, age, color} and creates a new cat with the given name, age, and color
+app.post('/kittens', setUser, async (req, res, next) => {
+  const user = req.user;
+  if (!user) {
+      res.sendStatus(401);
+  } else {
+      const {name, age, color} = req.body;
+      const kitten = await Kitten.create({name, age, color, ownerId: req.user.id});
+      res.status(201).send({name: kitten.name, age: kitten.age, color: kitten.color});
+      // res.send(kitty);
+  }
+});
 
 // DELETE /kittens/:id
 // TODO - takes an id and deletes the cat with that id
+app.delete('/kittens/:id', setUser, async (req, res, next) => {
+  // const kitty = await User.findByPk(req.params.id);
+  // TODO - req.user.id must match kitty.ownerId
+  const kitten = req.user;
+  if (!kitten) {
+      res.sendStatus(401);
+  } else {
+      const kitten = await Kitten.findByPk(kitten.id);
+      if (kitten.id === kitten.ownerId) {
+          await kitten.destroy();
+          res.sendStatus(204);
+      } else {
+          res.sendStatus(401);
+      }
+  } 
+});
 
 // error handling middleware, so failed tests receive them
 app.use((error, req, res, next) => {
