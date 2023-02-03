@@ -46,9 +46,9 @@ const setUser = async (req, res, next) => {
 app.get('/kittens/:id', setUser, async (req, res, next) => {
   // const auth = req.header("Authorization");
   const kitten = req.user;
-  const foundUser = await Kitten.findByPk(kitten.id);
-  if (foundUser) {
-    res.send();
+  if (kitten) {
+    const foundUser = await Kitten.findByPk(kitten.id);
+    res.send(foundUser);
   } else {
     res.sendStatus(401);
   }
@@ -73,12 +73,12 @@ app.post('/kittens', setUser, async (req, res, next) => {
 app.delete('/kittens/:id', setUser, async (req, res, next) => {
   // const kitty = await User.findByPk(req.params.id);
   // TODO - req.user.id must match kitty.ownerId
-  const kitten = req.user;
-  if (!kitten) {
+  const user = req.user;
+  if (!user) {
       res.sendStatus(401);
   } else {
-      const kitten = await Kitten.findByPk(kitten.id);
-      if (kitten.id === kitten.ownerId) {
+      const kitten = await Kitten.findByPk(user.id);
+      if (user.id === kitten.ownerId) {
           await kitten.destroy();
           res.sendStatus(204);
       } else {
