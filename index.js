@@ -30,6 +30,7 @@ const setUser = async (req, res, next) => {
   } else {
     const [, token] = auth.split(' ');
     const user = jwt.verify(token, JWT_SECRET);
+    console.log(user)
     req.user = user;
     next();
   }
@@ -45,10 +46,16 @@ const setUser = async (req, res, next) => {
 // TODO - takes an id and returns the cat with that id
 app.get('/kittens/:id', setUser, async (req, res, next) => {
   // const auth = req.header("Authorization");
-  const kitten = req.user;
-  if (kitten) {
-    const foundUser = await Kitten.findByPk(kitten.id);
-    res.send(foundUser);
+  const id = req.params.id;
+  const user = req.user;
+  if (user) {
+    // const {age, color, name} = await Kitten...
+    const foundKitty = await Kitten.findByPk(id);
+    if (foundKitty.ownerId === user.id) {
+    res.status(200).send({name: foundKitty.name, age: foundKitty.age, color: foundKitty.color});
+    } else {
+      res.sendStatus(401);
+    }
   } else {
     res.sendStatus(401);
   }
@@ -73,11 +80,13 @@ app.post('/kittens', setUser, async (req, res, next) => {
 app.delete('/kittens/:id', setUser, async (req, res, next) => {
   // const kitty = await User.findByPk(req.params.id);
   // TODO - req.user.id must match kitty.ownerId
+  const id = req.params.id;
   const user = req.user;
   if (!user) {
       res.sendStatus(401);
   } else {
-      const kitten = await Kitten.findByPk(user.id);
+    // await Kitten.create({ownerId: req.user.id});
+      const kitten = await Kitten.findByPk(id);
       if (user.id === kitten.ownerId) {
           await kitten.destroy();
           res.sendStatus(204);
