@@ -55,7 +55,9 @@ describe('Endpoints', () => {
         });
     });
 
-    describe.skip('login and register', () => {
+    // describe.skip('login and register', () => {
+    describe('login and register', () => {
+    
 
         describe('POST /register', () => {
             it('should send back success with token', async () => {

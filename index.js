@@ -1,6 +1,8 @@
 const express = require('express');
 const app = express();
-const { Kitten } = require('./db');
+const bcrypt = require('bcrypt');
+const saltCount = 10;
+const { User, Kitten } = require('./db');
 const jwt = require('jsonwebtoken');
 const {JWT_SECRET = 'neverTellthesecretheheh'} = process.env;
 
@@ -25,6 +27,7 @@ app.get('/', async (req, res, next) => {
 // TODO - Create authentication middleware
 const setUser = async (req, res, next) => {
   const auth = req.header("Authorization");
+  console.log(auth)
   if (!auth) {
     next();
   } else {
@@ -38,9 +41,34 @@ const setUser = async (req, res, next) => {
 
 // POST /register
 // OPTIONAL - takes req.body of {username, password} and creates a new user with the hashed password
+app.post("/register", async (req, res, next) => {
+  const { username, password } = req.body;
+  const hashedPW = await bcrypt.hash(password, saltCount);
+  const user = await User.create({ username, password: hashedPW });
+
+  const token = jwt.sign(
+    { id: user.id, username: user.username },
+    process.env.JWT_SECRET
+  );
+  res.send({ message: "success", token });
+});
 
 // POST /login
 // OPTIONAL - takes req.body of {username, password}, finds user by username, and compares the password with the hashed version from the DB
+app.post("/login", async (req, res, next) => {
+  const { username, password } = req.body;
+  const user = await User.findOne({ where: { username } });
+  const isAMatch = await bcrypt.compare(password, user.password);
+  if (isAMatch) {
+    const token = jwt.sign(
+      { id: user.id, username: user.username },
+      process.env.JWT_SECRET
+    );
+    res.send({ message: "success", token });
+  } else {
+    res.sendStatus(401);
+  }
+});
 
 // GET /kittens/:id
 // TODO - takes an id and returns the cat with that id
